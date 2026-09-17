@@ -39,6 +39,17 @@ def investigate_node(state: AgentState) -> AgentState:
     state["git_diff"] = tools.read_git_diff()
     return state
 
+def clean_code_fences(text: str) -> str:
+    """Strip markdown code fences if the model wraps its answer in them."""
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        lines = lines[1:]  # remove opening ``` or ```python line
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]  # remove closing ```
+        text = "\n".join(lines)
+    return text.strip()
+
 
 def diagnose_node(state: AgentState) -> AgentState:
     """LLM reasons over the evidence and proposes a fixed version of the file."""
@@ -59,7 +70,7 @@ Identify the root cause and return ONLY the corrected full file contents.
 Do not include explanations, markdown fences, or anything except the fixed code."""
 
     response = llm.invoke(prompt)
-    state["proposed_fix"] = response.content
+    state["proposed_fix"] = clean_code_fences(response.content)
     state["attempts"] += 1
     return state
 
