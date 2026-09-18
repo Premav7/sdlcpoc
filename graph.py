@@ -17,7 +17,7 @@ MAX_RETRIES = 3
 
 # ---- 1. Define the shared state that flows through every node ----
 class AgentState(TypedDict):
-    file_path: str          # the buggy file we're fixing
+    file_path: str          
     ci_log: str
     git_diff: str
     proposed_fix: str
@@ -37,6 +37,8 @@ def investigate_node(state: AgentState) -> AgentState:
     """Pulls real evidence: the CI failure log + the commit diff."""
     state["ci_log"] = tools.read_ci_log()
     state["git_diff"] = tools.read_git_diff()
+    print("\n========== CI ERROR LOG ==========")
+    print(state["ci_log"])
     return state
 
 def clean_code_fences(text: str) -> str:
@@ -72,6 +74,11 @@ Do not include explanations, markdown fences, or anything except the fixed code.
     response = llm.invoke(prompt)
     state["proposed_fix"] = clean_code_fences(response.content)
     state["attempts"] += 1
+    
+    print("\n========== PROPOSED FIX ==========")
+    print(state["proposed_fix"])
+
+    print(f"\n========== ATTEMPT {state['attempts']} ==========")
     return state
 
 
@@ -108,7 +115,6 @@ def escalate_node(state: AgentState) -> AgentState:
     return state
 
 
-# ---- 4. Conditional edge logic ----
 
 def decide_next_step(state: AgentState) -> str:
     if state["test_passed"]:
@@ -118,7 +124,6 @@ def decide_next_step(state: AgentState) -> str:
     return "retry"
 
 
-# ---- 5. Build the graph ----
 
 def build_graph():
     graph = StateGraph(AgentState)
@@ -140,7 +145,7 @@ def build_graph():
         decide_next_step,
         {
             "pr": "pr",
-            "retry": "diagnose",   # loop back to diagnosis with new context
+            "retry": "diagnose",   
             "escalate": "escalate",
         },
     )
